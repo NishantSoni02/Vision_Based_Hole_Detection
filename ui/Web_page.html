@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vision System Control Panel</title>
+<style>
+  :root {
+    --bg:         #1a1a18;
+    --surface:    #242420;
+    --surface2:   #2c2c28;
+    --border:     #3a3a34;
+    --text:       #e8e8e2;
+    --muted:      #7a7a72;
+    --accent:     #4a9fd4;
+    --accent-bg:  #0d2a3e;
+    --accent-bdr: #1e4a6a;
+    --green:      #3dba8a;
+    --green-bg:   #0a2a1e;
+    --green-bdr:  #1a4a34;
+    --red:        #e05555;
+    --red-bg:     #2a0f0f;
+    --red-bdr:    #4a1a1a;
+    --amber:      #d4943a;
+    --amber-bg:   #2a1a06;
+    --purple:     #8878d8;
+    --purple-bg:  #1a1530;
+    --mono:       'Cascadia Code', 'Fira Mono', Consolas, monospace;
+    --r:          8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); font-size: 13px;
+  }
+
+  /* ── Root layout ── */
+  .root {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 1fr 240px;
+    grid-template-areas:
+      "topbar  topbar"
+      "code    programs"
+      "output  output";
+    height: 100vh;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    grid-area: topbar;
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  }
+  .topbar h1 { font-size: 14px; font-weight: 600; flex: 1; }
+  .server-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .server-dot.ok  { background: var(--green); }
+  .server-dot.err { background: var(--red); }
+  #serverLabel { font-size: 11px; color: var(--muted); }
+  .tbtn {
+    font-size: 12px; padding: 5px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface2); color: var(--muted); cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .tbtn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── Code panel (LEFT) ── */
+  .code-panel {
+    grid-area: code;
+    display: flex; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); overflow: hidden; min-height: 0;
+  }
+  .panel-header {
+    padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #codeTitle { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+  .code-view {
+    flex: 1; overflow: auto; padding: 16px 18px;
+    font-family: var(--mono); font-size: 12px; line-height: 1.75;
+    color: #c8c8c0; background: var(--bg); white-space: pre; tab-size: 4;
+  }
+  .code-view::-webkit-scrollbar { width: 6px; height: 6px; }
+  .code-view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Action bar inside code panel */
+  .action-bar {
+    padding: 10px 14px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    background: var(--surface);
+  }
+  #mainBtn {
+    display: flex; align-items: center; gap: 7px; padding: 7px 20px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background .1s, border-color .1s, color .1s, transform .08s;
+    white-space: nowrap;
+  }
+  #mainBtn:hover   { background: var(--border); }
+  #mainBtn:active  { transform: scale(.97); }
+  #mainBtn:disabled{ opacity: .4; cursor: default; transform: none; }
+  #mainBtn.stop    { border-color: var(--red); color: var(--red); }
+  #mainBtn.stop:hover { background: var(--red-bg); }
+  #mainBtn svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .action-info { flex: 1; min-width: 0; }
+  #metaFile { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  #typeHint { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+  .placeholder-text { color: var(--muted); font-style: italic; }
+
+  /* ── Programs panel (RIGHT) ── */
+  .programs-panel {
+    grid-area: programs;
+    display: flex; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); overflow: hidden; min-height: 0;
+  }
+  .prog-list { flex: 1; overflow-y: auto; padding: 5px; }
+  .prog-list::-webkit-scrollbar { width: 4px; }
+  .prog-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .prog-item {
+    display: flex; align-items: flex-start; gap: 9px; padding: 9px 10px;
+    border-radius: 6px; cursor: pointer; border: 1px solid transparent;
+    transition: background .1s; margin-bottom: 3px; user-select: none;
+  }
+  .prog-item:hover    { background: var(--surface2); }
+  .prog-item.selected { background: var(--accent-bg); border-color: var(--accent-bdr); }
+  .prog-item.is-running .prog-icon { box-shadow: 0 0 0 2px var(--green); }
+
+  .prog-icon {
+    width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+  }
+  .prog-icon svg { width: 16px; height: 16px; }
+
+  .prog-text { min-width: 0; flex: 1; }
+  .prog-name { font-size: 12px; font-weight: 600; color: var(--text); word-break: break-word; line-height: 1.3; }
+  .prog-desc { font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.4; word-break: break-word; white-space: normal; }
+
+  .badge {
+    display: inline-block; font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 99px; margin-top: 5px;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  .badge-continuous  { background: var(--green-bg);  color: var(--green);  border: 1px solid var(--green-bdr); }
+  .badge-interactive { background: var(--purple-bg); color: var(--purple); border: 1px solid #2a2050; }
+  .badge-oneshot     { background: var(--amber-bg);  color: var(--amber);  border: 1px solid #3a2510; }
+
+  .empty-msg { padding: 16px 12px; font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .empty-msg code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-family: var(--mono); }
+
+  /* ── Output / Status bar (BOTTOM) ── */
+  .out-panel {
+    grid-area: output;
+    display: flex; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); overflow: hidden;
+    min-height: 90px; max-height: 180px;
+  }
+  .out-header {
+    padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); display: flex; align-items: center; gap: 8px;
+  }
+  .out-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0; transition: background .25s;
+  }
+  .out-dot.ok  { background: var(--green); }
+  .out-dot.err { background: var(--red); }
+  .out-dot.run { background: var(--amber); animation: pulse .9s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  .out-title-text { flex: 1; }
+  .clear-btn {
+    font-size: 10px; color: var(--muted); background: none; border: none;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px;
+  }
+  .clear-btn:hover { color: var(--text); background: var(--surface2); }
+
+  /* Status cards area */
+  .status-body {
+    flex: 1; overflow-y: auto; padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .status-body::-webkit-scrollbar { width: 4px; }
+  .status-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .status-entry {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface2);
+    font-size: 11px; line-height: 1.5;
+  }
+  .status-entry.s-ok  { border-color: var(--green-bdr); background: var(--green-bg); }
+  .status-entry.s-err { border-color: var(--red-bdr);   background: var(--red-bg);   }
+  .status-entry.s-run { border-color: #3a2a10;           background: var(--amber-bg); }
+  .status-entry.s-info{ border-color: var(--border);     background: var(--surface2); }
+
+  .s-icon { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+  .s-icon svg { width: 16px; height: 16px; }
+
+  .s-body { flex: 1; min-width: 0; }
+  .s-prog { font-weight: 600; color: var(--text); margin-bottom: 5px; }
+
+  .s-row {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 11px; margin-bottom: 3px;
+  }
+  .s-label {
+    color: var(--muted); font-size: 10px; min-width: 110px;
+    flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .s-val   { color: var(--text); font-size: 11px; }
+  .s-mono  { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .s-error { color: var(--red); font-family: var(--mono); font-size: 10px; }
+  .s-error-row .s-label { color: var(--red); }
+  .s-time { font-size: 9px; color: var(--muted); margin-top: 5px; }
+
+  .idle-msg { color: var(--muted); font-size: 11px; font-style: italic; padding: 4px 0; }
+</style>
+</head>
+<body>
+<div class="root">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <h1>Vision System Control Panel</h1>
+    <span class="server-dot" id="serverDot"></span>
+    <span id="serverLabel">connecting…</span>
+    <button class="tbtn" onclick="loadPrograms()">⟳ Refresh</button>
+  </div>
+
+  <!-- Code panel (LEFT) -->
+  <div class="code-panel">
+    <div class="panel-header">
+      <span>Code Preview</span>
+      <span id="codeTitle">select a program →</span>
+    </div>
+    <div class="code-view" id="codeView"><span class="placeholder-text">Select a program from the panel on the right to preview its code.</span></div>
+    <div class="action-bar">
+      <button id="mainBtn" onclick="handleBtn()" disabled>
+        <svg id="btnIcon" viewBox="0 0 12 12" fill="none">
+          <polygon points="2,1 11,6 2,11" fill="currentColor"/>
+        </svg>
+        <span id="btnLabel">Run program</span>
+      </button>
+      <div class="action-info">
+        <div id="metaFile"></div>
+        <div id="typeHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Programs panel (RIGHT) -->
+  <div class="programs-panel">
+    <div class="panel-header">
+      Programs <span id="progCount" style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px;color:var(--muted)"></span>
+    </div>
+    <div class="prog-list" id="progList">
+      <div class="empty-msg">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Output / Status (BOTTOM) -->
+  <div class="out-panel">
+    <div class="out-header">
+      <span class="out-dot" id="outDot"></span>
+      <span class="out-title-text">Status</span>
+      <button class="clear-btn" onclick="clearStatus()">Clear</button>
+    </div>
+    <div class="status-body" id="statusBody">
+      <div class="idle-msg">Run a program to see its status here…</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── SVG icons ─────────────────────────────────────────────────────────────────
+const ICONS = {
+  camera: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><circle cx="10" cy="11" r="3"/><path d="M7 5l1.5-2h3L13 5"/></svg>`,
+  search: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="5"/><line x1="13" y1="13" x2="17" y2="17"/></svg>`,
+  ruler:  `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="6" rx="1"/><line x1="6" y1="7" x2="6" y2="10"/><line x1="10" y1="7" x2="10" y2="13"/><line x1="14" y1="7" x2="14" y2="10"/></svg>`,
+  plc:    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><line x1="7" y1="8" x2="13" y2="8"/><line x1="7" y1="11" x2="11" y2="11"/><circle cx="14" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  script: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="12" height="16" rx="2"/><line x1="7" y1="7" x2="13" y2="7"/><line x1="7" y1="10" x2="13" y2="10"/><line x1="7" y1="13" x2="10" y2="13"/></svg>`,
+};
+const ICON_MAP = {
+  camera_test_main: ICONS.camera,
+  test5_main:       ICONS.search,
+  calibrate_camera: ICONS.ruler,
+  send_to_plc:      ICONS.plc,
+};
+
+// Status icons
+const S_ICONS = {
+  ok:   `<svg viewBox="0 0 16 16" fill="none" stroke="#3dba8a" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><polyline points="5,8 7,10 11,6"/></svg>`,
+  err:  `<svg viewBox="0 0 16 16" fill="none" stroke="#e05555" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="6" y1="6" x2="10" y2="10"/><line x1="10" y1="6" x2="6" y2="10"/></svg>`,
+  run:  `<svg viewBox="0 0 16 16" fill="none" stroke="#d4943a" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="8"/><circle cx="8" cy="11" r="0.5" fill="#d4943a"/></svg>`,
+  stop: `<svg viewBox="0 0 16 16" fill="none" stroke="#7a7a72" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><rect x="6" y="6" width="4" height="4" fill="#7a7a72" stroke="none"/></svg>`,
+  info: `<svg viewBox="0 0 16 16" fill="none" stroke="#4a9fd4" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="8" y1="7" x2="8" y2="11"/><circle cx="8" cy="5" r="0.5" fill="#4a9fd4"/></svg>`,
+};
+
+const TYPE_HINTS = {
+  continuous:  "Opens an OpenCV window. Click Launch to start, Stop to terminate.",
+  interactive: "Opens an OpenCV window for interaction. Click Stop when done.",
+  oneshot:     "Runs once and returns its result in the status panel below.",
+};
+
+const API = "http://localhost:5000/api";
+
+let programsMap = {};
+let selectedId  = null;
+let runningSet  = new Set();
+let pollTimer   = null;
+
+// ── Load programs ─────────────────────────────────────────────────────────────
+async function loadPrograms() {
+  try {
+    const res  = await fetch(`${API}/programs`);
+    const list = await res.json();
+
+    programsMap = {};
+    list.forEach(p => { programsMap[p.id] = p; });
+    runningSet = new Set(list.filter(p => p.running).map(p => p.id));
+
+    document.getElementById("serverDot").className    = "server-dot ok";
+    document.getElementById("serverLabel").textContent = "connected";
+    document.getElementById("progCount").textContent   = list.length;
+
+    renderList();
+    if (selectedId && programsMap[selectedId]) updateActionBar();
+
+  } catch (e) {
+    document.getElementById("serverDot").className    = "server-dot err";
+    document.getElementById("serverLabel").textContent = "server offline";
+    document.getElementById("progList").innerHTML =
+      `<div class="empty-msg">Cannot reach server.<br>Run <code>python server.py</code> first.</div>`;
+  }
+}
+
+function renderList() {
+  const container = document.getElementById("progList");
+  const ids = Object.keys(programsMap);
+  if (!ids.length) {
+    container.innerHTML = `<div class="empty-msg">No scripts found.<br>Drop <code>.py</code> files into <strong>scripts/</strong> and Refresh.</div>`;
+    return;
+  }
+  container.innerHTML = ids.map(id => {
+    const p       = programsMap[id];
+    const sel     = id === selectedId  ? " selected"   : "";
+    const running = runningSet.has(id) ? " is-running" : "";
+    const icon    = ICON_MAP[id] || ICONS.script;
+    return `
+      <div class="prog-item${sel}${running}" id="item-${id}" onclick="selectById('${id}')">
+        <div class="prog-icon">${icon}</div>
+        <div class="prog-text">
+          <div class="prog-name">${esc(p.name)}</div>
+          <div class="prog-desc">${esc(p.desc)}</div>
+          <span class="badge badge-${p.type}">${p.type}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+// ── Select ────────────────────────────────────────────────────────────────────
+function selectById(id) {
+  selectedId = id;
+  const p = programsMap[id];
+  if (!p) return;
+  document.getElementById("codeTitle").textContent = p.file;
+  const cv = document.getElementById("codeView");
+  cv.textContent = p.code;
+  document.getElementById("mainBtn").disabled = false;
+  renderList();
+  updateActionBar();
+}
+
+// ── Action bar ────────────────────────────────────────────────────────────────
+function updateActionBar() {
+  if (!selectedId) return;
+  const p     = programsMap[selectedId];
+  const isRun = runningSet.has(selectedId);
+  const btn   = document.getElementById("mainBtn");
+
+  document.getElementById("metaFile").textContent = p ? p.file : "";
+  document.getElementById("typeHint").textContent = p ? (TYPE_HINTS[p.type] || "") : "";
+
+  if (isRun) {
+    btn.className = "stop";
+    document.getElementById("btnLabel").textContent = "Stop";
+    document.getElementById("btnIcon").innerHTML = `<rect x="1" y="1" width="10" height="10" rx="1" fill="currentColor"/>`;
+  } else {
+    btn.className = "";
+    document.getElementById("btnLabel").textContent = p && p.type === "oneshot" ? "Run program" : "Launch";
+    document.getElementById("btnIcon").innerHTML = `<polygon points="2,1 11,6 2,11" fill="currentColor"/>`;
+  }
+}
+
+function handleBtn() {
+  if (!selectedId) return;
+  runningSet.has(selectedId) ? stopScript() : runScript();
+}
+
+// ── Run ───────────────────────────────────────────────────────────────────────
+async function runScript() {
+  if (!selectedId) return;
+  const p = programsMap[selectedId];
+  addStatus("run", p.name, "Starting…", S_ICONS.run);
+  setDot("run");
+  document.getElementById("mainBtn").disabled = true;
+
+  try {
+    const res  = await fetch(`${API}/run/${selectedId}`, { method: "POST" });
+    const data = await res.json();
+
+    if (data.error) {
+      updateLastStatus("err", p.name, data.error, S_ICONS.err);
+      setDot("err");
+      document.getElementById("mainBtn").disabled = false;
+      return;
+    }
+
+    if (data.status === "launched") {
+      runningSet.add(selectedId);
+      document.getElementById(`item-${selectedId}`)?.classList.add("is-running");
+      updateLastStatus("run", p.name, "Running — interact via the OpenCV window.", S_ICONS.run);
+      updateActionBar();
+      document.getElementById("mainBtn").disabled = false;
+      startPolling(selectedId);
+    } else {
+      // oneshot — parse meaningful output
+      handleOneshotResult(p.name, data);
+      document.getElementById("mainBtn").disabled = false;
+    }
+  } catch (e) {
+    updateLastStatus("err", p.name, `Request failed: ${e.message}`, S_ICONS.err);
+    setDot("err");
+    document.getElementById("mainBtn").disabled = false;
+  }
+}
+
+function handleOneshotResult(name, data) {
+  if (data.returncode === 0) {
+    // Extract last meaningful line from stdout as summary
+    const lines = (data.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
+    const summary = lines.length ? lines[lines.length - 1] : "Completed with no output.";
+    updateLastStatus("ok", name, summary, S_ICONS.ok);
+    setDot("ok");
+  } else {
+    // Get the actual error from stderr
+    const errLines = (data.stderr || data.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
+    const errMsg = errLines.length ? errLines[errLines.length - 1] : `Exited with code ${data.returncode}`;
+    updateLastStatus("err", name, errMsg, S_ICONS.err);
+    setDot("err");
+  }
+}
+
+async function stopScript() {
+  if (!selectedId) return;
+  try { await fetch(`${API}/stop/${selectedId}`, { method: "POST" }); } catch(e){}
+  stopPolling();
+  finishRunning(selectedId);
+  const p = programsMap[selectedId];
+  addStatus("info", p ? p.name : selectedId, "Stopped by user.", S_ICONS.stop);
+  setDot("ok");
+}
+
+// ── [STATUS] line parser ──────────────────────────────────────────────────────
+// Parses lines like:
+//   [STATUS] holes=12 | method=BLOB | saved=hole_coordinates_mm.json
+//   [STATUS] error=No holes detected in ROI
+//   [STATUS] running=true | Camera started | Press D to detect
+function parseStatusLine(line) {
+  if (!line.startsWith("[STATUS]")) return null;
+  const raw = line.slice(8).trim();
+  const parts = raw.split("|").map(s => s.trim());
+  const result = { raw, fields: {} };
+  parts.forEach(part => {
+    const eq = part.indexOf("=");
+    if (eq > -1) {
+      result.fields[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+    } else {
+      result.fields["_msg"] = (result.fields["_msg"] ? result.fields["_msg"] + " | " : "") + part;
+    }
+  });
+  return result;
+}
+
+function buildRichCard(progName, parsed, time) {
+  const f = parsed.fields;
+  const hasError  = !!f.error;
+  const hasHoles  = f.holes !== undefined;
+  const isRunning = f.running === "true";
+
+  let state = isRunning ? "run" : hasError ? "err" : "ok";
+  let icon  = isRunning ? S_ICONS.run : hasError ? S_ICONS.err : S_ICONS.ok;
+
+  // Build rows of detail
+  let rows = "";
+
+  if (hasHoles) {
+    const count = parseInt(f.holes);
+    const holeColor = count > 0 ? "var(--green)" : "var(--amber)";
+    rows += `<div class="s-row">
+      <span class="s-label">Holes detected</span>
+      <span class="s-val" style="color:${holeColor};font-weight:700">${count}</span>
+    </div>`;
+  }
+  if (f.method) {
+    rows += `<div class="s-row"><span class="s-label">Detection method</span><span class="s-val">${esc(f.method)}</span></div>`;
+  }
+  if (f.saved) {
+    rows += `<div class="s-row"><span class="s-label">Saved to</span><span class="s-val s-mono">${esc(f.saved)}</span></div>`;
+  }
+  if (f.error) {
+    rows += `<div class="s-row s-error-row"><span class="s-label">Error</span><span class="s-val s-error">${esc(f.error)}</span></div>`;
+  }
+  if (f._msg) {
+    rows += `<div class="s-row"><span class="s-label">Info</span><span class="s-val">${esc(f._msg)}</span></div>`;
+  }
+
+  return { state, icon, rows, time };
+}
+
+// ── Polling (continuous/interactive) ─────────────────────────────────────────
+function startPolling(sid) {
+  stopPolling();
+
+  pollTimer = setInterval(async () => {
+    try {
+      const res  = await fetch(`${API}/output/${sid}`);
+      const data = await res.json();
+
+      if (data.lines && data.lines.length) {
+        data.lines.forEach(line => {
+          const parsed = parseStatusLine(line);
+          if (parsed) {
+            const time = new Date().toLocaleTimeString();
+            const card = buildRichCard(programsMap[sid]?.name || sid, parsed, time);
+            // Running status → update in place; detection result → new card
+            if (parsed.fields.running === "true") {
+              updateLastCard(sid, card);
+            } else {
+              addRichCard(sid, card);
+            }
+            setDot(card.state);
+          }
+        });
+      }
+
+      if (!data.running) {
+        stopPolling();
+        finishRunning(sid);
+        setDot("ok");
+      }
+    } catch(e){}
+  }, 500);
+}
+
+function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+function finishRunning(sid) {
+  runningSet.delete(sid);
+  document.getElementById(`item-${sid}`)?.classList.remove("is-running");
+  if (selectedId === sid) updateActionBar();
+}
+
+// ── Status card helpers ───────────────────────────────────────────────────────
+// Each program gets its own "running" card id, plus a list of detection cards
+const runningCardId = {};   // sid -> element id of the current running card
+let cardCounter = 0;
+
+function addRichCard(sid, card) {
+  const body = document.getElementById("statusBody");
+  body.querySelector(".idle-msg")?.remove();
+
+  const id  = "sc-" + (++cardCounter);
+  const div = document.createElement("div");
+  div.className = `status-entry s-${card.state}`;
+  div.id = id;
+  div.innerHTML = buildCardHTML(programsMap[sid]?.name || sid, card);
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  return id;
+}
+
+function updateLastCard(sid, card) {
+  // Update the running card in place, or create it
+  const existingId = runningCardId[sid];
+  const existing   = existingId ? document.getElementById(existingId) : null;
+  if (existing) {
+    existing.className   = `status-entry s-${card.state}`;
+    existing.innerHTML   = buildCardHTML(programsMap[sid]?.name || sid, card);
+  } else {
+    const id = addRichCard(sid, card);
+    runningCardId[sid] = id;
+  }
+  document.getElementById("statusBody").scrollTop = 99999;
+}
+
+function buildCardHTML(progName, card) {
+  return `
+    <div class="s-icon">${card.icon}</div>
+    <div class="s-body">
+      <div class="s-prog">${esc(progName)}</div>
+      ${card.rows}
+      <div class="s-time">${card.time}</div>
+    </div>`;
+}
+
+// Legacy helpers still used by oneshot / stop / launch paths
+function addStatus(state, progName, msg, iconSvg) {
+  const body = document.getElementById("statusBody");
+  body.querySelector(".idle-msg")?.remove();
+  const id  = "sc-" + (++cardCounter);
+  const div = document.createElement("div");
+  div.className = `status-entry s-${state}`;
+  div.id = id;
+  div.innerHTML = `
+    <div class="s-icon">${iconSvg}</div>
+    <div class="s-body">
+      <div class="s-prog">${esc(progName)}</div>
+      <div class="s-row"><span class="s-label">Info</span><span class="s-val">${esc(msg)}</span></div>
+      <div class="s-time">${new Date().toLocaleTimeString()}</div>
+    </div>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+function updateLastStatus(state, progName, msg, iconSvg) {
+  addStatus(state, progName, msg, iconSvg);
+}
+
+function setDot(state) {
+  document.getElementById("outDot").className = "out-dot" + (state ? " " + state : "");
+}
+
+function clearStatus() {
+  setDot("");
+  cardCounter = 0;
+  Object.keys(runningCardId).forEach(k => delete runningCardId[k]);
+  document.getElementById("statusBody").innerHTML = `<div class="idle-msg">Run a program to see its status here…</div>`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadPrograms();
+setInterval(async () => {
+  try {
+    const r = await fetch(`${API}/status`);
+    const d = await r.json();
+    const srv = new Set(d.running);
+    runningSet.forEach(sid => { if (!srv.has(sid)) finishRunning(sid); });
+  } catch(e){}
+}, 3000);
+</script>
+</body>
+</html>
