@@ -5,7 +5,7 @@
 ```
 python_runner/
 ├── server.py          ← Flask backend
-├── index.html         ← Frontend UI (open in browser)
+├── Web_page.html         ← Frontend UI (open in browser)
 └── requirements.txt
     
 ## Setup
@@ -21,7 +21,7 @@ pip install -r requirements.txt
    python server.py
    ```
 
-2. Open `index.html` in your browser (double-click).
+2. Open `Web_page.html` in your browser (double-click).
 
 ## How the UI works
 
