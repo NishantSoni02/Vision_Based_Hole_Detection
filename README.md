@@ -14,14 +14,14 @@ A web-based control dashboard is developed to manage and execute different modul
 - Modular pipeline for vision processing and execution
 
 ### 🧠 System Workflow
-Camera → Image Processing → Hole Detection → Coordinate Extraction → Calibration → PLC Communication → Robot Action
+Camera → Calibration → Image Processing → Hole Detection → Coordinate Extraction → PLC Communication → Robot Action
 
 ### 💻 Tech Stack
 - Python
 - OpenCV
+- Snap7 (PLC Communication)
 - Flask (Backend UI)
 - HTML/CSS (Frontend UI)
-- Snap7 (PLC Communication)
 
 ### 📊 Performance
 - Repeatability:  
@@ -31,6 +31,6 @@ Camera → Image Processing → Hole Detection → Coordinate Extraction → Cal
 ### 📸 Outputs
 The system successfully detects multiple holes, extracts coordinates, and transmits them for automation tasks through a structured pipeline.
 
----
+
 
 This project demonstrates the integration of computer vision, web-based interfaces, and industrial automation systems into a unified inspection solution.
