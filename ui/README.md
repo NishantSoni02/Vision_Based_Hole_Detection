@@ -31,5 +31,5 @@ pip install -r requirements.txt
 | `interactive`| Same — you interact via the OpenCV window (clicks, keypresses). |
 | `oneshot`    | Runs once, output appears in the panel below. |
 
-## Adding more scripts
+
 
